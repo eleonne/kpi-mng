@@ -5,6 +5,14 @@ Hetzner, a bare-metal box, etc.) — from a fresh server to a working,
 HTTPS-served production instance. Written for Ubuntu/Debian; adjust package
 manager commands if you're on something else.
 
+This is the manual, HTTPS-via-Caddy path. If you want something faster and
+don't need TLS termination on this box (e.g. it's Debian 13 and TLS is
+handled elsewhere, or you're fine serving plain HTTP), `deploy/install.sh`
+automates steps 3–7 below into one script that runs the app directly on
+port 80 instead — see [../deploy/install.sh](../deploy/install.sh) and its
+companion `deploy/uninstall.sh`. The two approaches aren't meant to be
+combined on the same machine; pick one.
+
 **Why a VPS and not a serverless platform (Vercel, Netlify, ...):** this app
 uses a local SQLite file (`prisma/dev.db` locally; see below for prod). That
 needs a persistent filesystem — serverless platforms give you an ephemeral

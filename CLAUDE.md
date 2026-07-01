@@ -92,8 +92,10 @@ kpi-mng/
     mcp.md
     deployment.md
   deploy/
-    kpi-dashboard.service     # systemd unit template — see docs/deployment.md
-    Caddyfile                  # reverse proxy + HTTPS template — see docs/deployment.md
+    kpi-dashboard.service     # systemd unit template (manual path) — see docs/deployment.md
+    Caddyfile                  # reverse proxy + HTTPS template (manual path) — see docs/deployment.md
+    install.sh                  # automated Debian 13 install — runs directly on port 80, no TLS
+    uninstall.sh                 # removes what install.sh set up (--purge to also drop the service user)
   tests/
     unit/                    # lib/calculations, lib/validation
     component/                # components/*
