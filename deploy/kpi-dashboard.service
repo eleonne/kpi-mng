@@ -1,0 +1,25 @@
+# systemd unit template — see docs/deployment.md step 7.
+#
+# Install: sudo cp deploy/kpi-dashboard.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now kpi-dashboard
+#
+# Adjust User/WorkingDirectory below if you didn't use the user/path this
+# repo's docs/deployment.md assumes (kpiapp / /home/kpiapp/kpi-mng).
+
+[Unit]
+Description=KPI Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=kpiapp
+WorkingDirectory=/home/kpiapp/kpi-mng
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+# Caddyfile template — see docs/deployment.md step 8.
+#
+# Install: sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#          (edit the domain below)
+#          sudo systemctl reload caddy
+#
+# Caddy automatically requests and renews a Let's Encrypt certificate for
+# the domain on first request — no separate certbot step needed.
+
+your-domain.example.com {
+	reverse_proxy 127.0.0.1:3000
+
+	# Strongly recommended while /api/kpis and /api/mcp have no application-
+	# level auth (see docs/api.md and docs/mcp.md) — uncomment and set real
+	# credentials. This protects the whole app, including the dashboard UI;
+	# if you only want to gate the API/MCP routes, move this into a
+	# `handle /api/*` block instead.
+	#
+	# Generate the password hash first (don't put a plaintext password
+	# here): `caddy hash-password`, then paste its output below.
+	# basic_auth {
+	# 	your-username <paste the hash from `caddy hash-password` here>
+	# }
+}

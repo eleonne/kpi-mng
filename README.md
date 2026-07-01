@@ -43,6 +43,9 @@ If you'd rather start from a clean slate without the example data, skip
 `npm run db:seed` — the dashboard just shows "no KPIs yet" until you create
 one.
 
+Ready to put this somewhere real? See [docs/deployment.md](docs/deployment.md)
+for a full runbook (VPS + systemd + HTTPS).
+
 ### Database
 
 SQLite, single file (`dev.db`, gitignored). `dev.db.default` is a committed
@@ -65,7 +68,8 @@ npm run lint             # ESLint
 npm run test             # Vitest (unit + component)
 npm run test:e2e          # Playwright (UI flow + REST API + MCP server)
 npm run mcp              # run the MCP server standalone (stdio)
-npm run db:migrate       # create/apply a Prisma migration
+npm run db:migrate       # create/apply a Prisma migration (dev)
+npm run db:migrate:deploy # apply existing migrations non-interactively (prod)
 npm run db:seed          # seed example KPIs (prisma/seed.ts)
 npm run db:studio        # browse the SQLite database
 ```
@@ -79,6 +83,7 @@ npm run db:studio        # browse the SQLite database
 | [docs/business-rules.md](docs/business-rules.md) | Validation and lifecycle rules |
 | [docs/api.md](docs/api.md) | REST API reference |
 | [docs/mcp.md](docs/mcp.md) | MCP server tool reference and client setup |
+| [docs/deployment.md](docs/deployment.md) | Deploying to a self-managed VPS |
 
 ## License
 

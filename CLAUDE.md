@@ -34,12 +34,18 @@ Requires **Node.js 20+ LTS**.
 
 Server Components fetch data (via Prisma) directly — no client-side data-fetching library
 (no React Query/SWR) unless a concrete need for it shows up (e.g. polling, optimistic UI
-beyond what `useOptimistic` covers). There are **three thin entry points** into the same
+beyond what `useOptimistic` covers). There are **four thin entry points** into the same
 `lib/services/*` functions, so business rules are defined exactly once:
 - The UI's **Server Actions** (`src/actions/*`, FormData in)
-- A JSON **REST API** under `app/api/` (see [docs/api.md](docs/api.md))
-- An **MCP server** (`mcp/server.ts`, see [docs/mcp.md](docs/mcp.md)) — talks to the database
-  directly (not through the running Next.js server), for LLM clients like Claude Code/Desktop
+- A JSON **REST API** under `app/api/kpis/` (see [docs/api.md](docs/api.md))
+- **MCP, stdio transport** (`mcp/server.ts`) — for local clients (Claude Code, Claude Desktop)
+  that spawn it as a subprocess; talks to the database directly, not through the Next.js server
+- **MCP, Streamable HTTP transport** (`app/api/mcp/route.ts`) — for remote clients over the
+  network; runs inside the same Next.js process as the REST API
+
+Both MCP transports share one set of tool definitions (`lib/mcp/create-server.ts`) — see
+[docs/mcp.md](docs/mcp.md), including the internet-exposure/auth caveats before deploying the
+HTTP transport anywhere publicly reachable (there is no authentication on it today, by choice).
 
 ```
 kpi-mng/
@@ -48,7 +54,7 @@ kpi-mng/
     migrations/
     dev.db                 # gitignored
   mcp/
-    server.ts               # MCP server — stdio transport, see docs/mcp.md
+    server.ts               # MCP stdio entry point — see docs/mcp.md
   src/
     app/                    # Next.js App Router routes (pages + layouts)
       page.tsx               # dashboard home
@@ -61,7 +67,9 @@ kpi-mng/
           entries/
             new/page.tsx         # log a new case
             [entryId]/edit/page.tsx
-      api/kpis/              # REST API (JSON in/out), calls lib/services/* — see docs/api.md
+      api/
+        kpis/                 # REST API (JSON in/out), calls lib/services/* — see docs/api.md
+        mcp/route.ts           # MCP Streamable HTTP transport — see docs/mcp.md
     components/
       ui/                    # shadcn/ui primitives
       kpi/                   # KpiCard, KpiForm, FieldDefinitionBuilder, EntryForm, ...
@@ -71,6 +79,7 @@ kpi-mng/
       calculations/          # current-value engine: COUNT / PERCENTAGE_OF_ENTRIES / PERCENTAGE_OF_FIXED_POPULATION
       validation/             # Zod schemas — form (FormData) and api (JSON) variants per entity, reused by mcp/
       services/                # business-rule logic + Prisma writes, shared by actions/, app/api/, and mcp/
+      mcp/create-server.ts       # MCP tool definitions, shared by both MCP transports
       serializers.ts            # framework-free JSON shaping, shared by app/api/ and mcp/
       errors.ts                 # AppError (+ NotFound/Conflict/BusinessRule) for service-layer failures
       api-utils.ts               # Next-specific error-response mapping (re-exports serializers.ts)
@@ -81,6 +90,10 @@ kpi-mng/
     business-rules.md
     api.md
     mcp.md
+    deployment.md
+  deploy/
+    kpi-dashboard.service     # systemd unit template — see docs/deployment.md
+    Caddyfile                  # reverse proxy + HTTPS template — see docs/deployment.md
   tests/
     unit/                    # lib/calculations, lib/validation
     component/                # components/*
@@ -93,16 +106,16 @@ kpi-mng/
   `PERCENTAGE_OF_ENTRIES` / `PERCENTAGE_OF_FIXED_POPULATION` rules from `docs/data-model.md`
   are pure functions over Prisma query results, unit-tested in isolation. Server Components and
   Server Actions call into this module; they don't reimplement the math.
-- **All three entry points (Server Actions, API routes, MCP tools) stay thin, and share one
-  service layer.** Each parses its own input shape (FormData vs JSON — see the form/api Zod
-  schema split in `lib/validation/*`; MCP tool `inputSchema`s reuse the same base Zod shapes),
-  then calls into `lib/services/*` for everything that needs the database: uniqueness checks,
-  activation preconditions, delete guards, and the actual Prisma writes. Business rules from
-  `docs/business-rules.md` live in the service functions, which throw `AppError` subclasses
-  (`lib/errors.ts`) on violation — actions surface `.message` as a form error, API routes map
-  `.status` to the HTTP response (`lib/api-utils.ts`), MCP tools return `.message` as an
-  `isError: true` result. Never re-implement a rule directly in an action, a route handler, or
-  an MCP tool; add it to the service instead.
+- **All four entry points (Server Actions, REST API, and both MCP transports) stay thin, and
+  share one service layer.** Each parses its own input shape (FormData vs JSON — see the
+  form/api Zod schema split in `lib/validation/*`; MCP tool `inputSchema`s reuse the same base
+  Zod shapes), then calls into `lib/services/*` for everything that needs the database:
+  uniqueness checks, activation preconditions, delete guards, and the actual Prisma writes.
+  Business rules from `docs/business-rules.md` live in the service functions, which throw
+  `AppError` subclasses (`lib/errors.ts`) on violation — actions surface `.message` as a form
+  error, API routes map `.status` to the HTTP response (`lib/api-utils.ts`), MCP tools (either
+  transport) return `.message` as an `isError: true` result. Never re-implement a rule directly
+  in an action, a route handler, or an MCP tool; add it to the service instead.
 - **Dynamic case fields (EAV) are rendered generically.** One `EntryForm` component reads a
   KPI's active `KpiFieldDefinition` rows and renders the right input per `field_type` — no
   per-KPI hardcoded forms.
@@ -124,7 +137,8 @@ kpi-mng/
   `archive`) are sub-resource `POST`s, not overloaded into `PATCH` — mirrors the distinct
   Server Actions for the same operations.
 - MCP tools: `verb_noun` snake_case (`create_kpi`, `activate_kpi`, `add_kpi_case`), one
-  `server.registerTool(...)` call per tool in `mcp/server.ts`, matching `docs/mcp.md`.
+  `server.registerTool(...)` call per tool in `lib/mcp/create-server.ts` (shared by both
+  transports), matching `docs/mcp.md`.
 - Keep `docs/data-model.md`, `docs/business-rules.md`, `docs/api.md`, and `docs/mcp.md` in sync with
   `schema.prisma` / `lib/services/*` — if a migration changes an entity's shape or a rule
   changes, update the relevant doc in the same change.
@@ -139,7 +153,9 @@ Small internal tool — proportional test effort, not a full pyramid:
 - **Component** (React Testing Library): the dynamic `EntryForm` (renders correct input per
   field type, required-field validation) and the field-definition builder.
 - **E2E** (Playwright): one smoke test per core flow — create a KPI, log a case, see the
-  dashboard value update; archive a KPI; deactivate a field.
+  dashboard value update; archive a KPI; deactivate a field — plus the same create/field/
+  activate/case/delete lifecycle repeated against each entry point (REST API, MCP stdio, MCP
+  Streamable HTTP) to confirm they all enforce the same rules.
 
 ## Commands
 
@@ -150,9 +166,13 @@ npm run lint            # ESLint
 npm run test            # Vitest (unit + component)
 npm run test:e2e        # Playwright
 npm run mcp             # run the MCP server standalone (stdio) — see docs/mcp.md
-npx prisma migrate dev  # create/apply a migration
+npx prisma migrate dev  # create/apply a migration (dev)
+npm run db:migrate:deploy # apply existing migrations non-interactively (prod)
 npx prisma studio       # inspect the SQLite DB
 ```
+
+Deploying somewhere real? See [docs/deployment.md](docs/deployment.md) (VPS + systemd +
+Caddy) and the `deploy/` folder's config templates.
 
 ## Open questions
 
