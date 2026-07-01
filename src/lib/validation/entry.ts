@@ -31,6 +31,9 @@ export function buildEntryFieldValuesSchema(fieldDefinitions: KpiFieldDefinition
   return z.object(shape);
 }
 
+/** "" / undefined / null all mean "no value" for a form/JSON input — treat them alike. */
+const emptyToUndefined = (v: unknown) => (v === "" || v === undefined || v === null ? undefined : v);
+
 function fieldValueSchemaFor(field: KpiFieldDefinition): z.ZodTypeAny {
   let schema: z.ZodTypeAny;
 
@@ -41,24 +44,38 @@ function fieldValueSchemaFor(field: KpiFieldDefinition): z.ZodTypeAny {
       schema = z.string().trim();
       if (!field.isRequired) schema = schema.optional().or(z.literal(""));
       break;
-    case FieldType.NUMBER:
-      schema = field.isRequired ? z.coerce.number() : z.coerce.number().optional();
+    case FieldType.NUMBER: {
+      // z.coerce.number() still runs Number(...) on undefined/"" (-> NaN) rather than
+      // cleanly rejecting a missing value, producing a confusing "expected number,
+      // received NaN" message — normalize emptiness first so the custom message applies
+      // to both "missing" and "not actually a number" cases.
+      const message = field.isRequired ? `${field.label} is required` : `${field.label} must be a number`;
+      const base = z.coerce.number({ error: () => message });
+      schema = z.preprocess(emptyToUndefined, field.isRequired ? base : base.optional());
       break;
-    case FieldType.DATE:
-      schema = field.isRequired ? z.coerce.date() : z.coerce.date().optional();
+    }
+    case FieldType.DATE: {
+      // Same z.coerce quirk as NUMBER above, but with Invalid Date instead of NaN.
+      const message = field.isRequired ? `${field.label} is required` : `${field.label} must be a valid date`;
+      const base = z.coerce.date({ error: () => message });
+      schema = z.preprocess(emptyToUndefined, field.isRequired ? base : base.optional());
       break;
+    }
     case FieldType.BOOLEAN:
       schema = z.coerce.boolean().default(false);
       break;
     case FieldType.MULTI_SELECT:
       schema = z.array(z.string()).default([]);
-      if (field.isRequired) schema = schema.pipe(z.array(z.string()).min(1));
+      if (field.isRequired) schema = schema.pipe(z.array(z.string()).min(1, `${field.label} is required`));
       break;
     default:
       schema = z.unknown();
   }
 
-  return field.isRequired && field.fieldType !== FieldType.MULTI_SELECT
+  const selfValidatingTypes: FieldType[] = [FieldType.MULTI_SELECT, FieldType.NUMBER, FieldType.DATE];
+  const needsGenericRequiredCheck = field.isRequired && !selfValidatingTypes.includes(field.fieldType);
+
+  return needsGenericRequiredCheck
     ? schema.refine((v) => v !== undefined && v !== "" && v !== null, {
         message: `${field.label} is required`,
       })

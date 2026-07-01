@@ -34,9 +34,14 @@ export default function RootLayout({
             <Link href="/" className="text-lg font-semibold">
               KPI Dashboard
             </Link>
-            <Link href="/kpis/archived" className="text-sm text-muted-foreground hover:underline">
-              Archived
-            </Link>
+            <nav className="flex items-center gap-4">
+              <Link href="/executive" className="text-sm text-muted-foreground hover:underline">
+                Executive View
+              </Link>
+              <Link href="/kpis/archived" className="text-sm text-muted-foreground hover:underline">
+                Archived
+              </Link>
+            </nav>
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>

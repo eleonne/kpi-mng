@@ -2,7 +2,10 @@ import { prisma } from "@/lib/db";
 import { KpiStatus } from "@/generated/prisma/enums";
 
 export const kpiWithEntriesInclude = {
-  entries: { include: { fieldValues: true }, orderBy: { entryDate: "desc" as const } },
+  entries: {
+    include: { fieldValues: { include: { fieldDefinition: true } } },
+    orderBy: { entryDate: "desc" as const },
+  },
   fieldDefinitions: { orderBy: { displayOrder: "asc" as const } },
 } as const;
 

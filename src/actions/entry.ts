@@ -2,9 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
 import { buildEntryFieldValuesSchema, entryCoreSchema } from "@/lib/validation/entry";
-import { writeFieldValue } from "@/lib/field-values";
+import {
+  createEntryRecord,
+  deleteEntryRecord,
+  getActiveFieldDefinitions,
+  updateEntryRecord,
+} from "@/lib/services/entry-service";
 import { FieldType } from "@/generated/prisma/enums";
 import type { KpiFieldDefinition } from "@/generated/prisma/client";
 import type { ActionState } from "./kpi";
@@ -27,13 +31,6 @@ function readDynamicRawValues(formData: FormData, fields: KpiFieldDefinition[]) 
   return raw;
 }
 
-async function loadActiveFields(kpiId: string) {
-  return prisma.kpiFieldDefinition.findMany({
-    where: { kpiId, isActive: true },
-    orderBy: { displayOrder: "asc" },
-  });
-}
-
 function parseEntryCore(formData: FormData) {
   return entryCoreSchema.safeParse({
     ...Object.fromEntries(formData),
@@ -53,31 +50,18 @@ export async function logKpiEntry(
     return { fieldErrors: core.error.flatten().fieldErrors };
   }
 
-  const fields = await loadActiveFields(kpiId);
+  const fields = await getActiveFieldDefinitions(kpiId);
   const dynamicSchema = buildEntryFieldValuesSchema(fields);
   const dynamicParsed = dynamicSchema.safeParse(readDynamicRawValues(formData, fields));
   if (!dynamicParsed.success) {
     return { fieldErrors: dynamicParsed.error.flatten().fieldErrors };
   }
 
-  await prisma.kpiEntry.create({
-    data: {
-      kpiId,
-      entryDate: core.data.entryDate,
-      countsTowardTarget: core.data.countsTowardTarget,
-      evidenceSource: core.data.evidenceSource || null,
-      notes: core.data.notes || null,
-      fieldValues: {
-        create: fields.map((field) => ({
-          fieldDefinitionId: field.id,
-          ...writeFieldValue(
-            field.fieldType,
-            dynamicParsed.data[field.fieldKey as keyof typeof dynamicParsed.data] as never,
-          ),
-        })),
-      },
-    },
-  });
+  try {
+    await createEntryRecord(kpiId, core.data, dynamicParsed.data, fields);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to log case." };
+  }
 
   revalidatePath(`/kpis/${kpiId}`);
   redirect(`/kpis/${kpiId}`);
@@ -94,47 +78,24 @@ export async function updateKpiEntry(
     return { fieldErrors: core.error.flatten().fieldErrors };
   }
 
-  const fields = await loadActiveFields(kpiId);
+  const fields = await getActiveFieldDefinitions(kpiId);
   const dynamicSchema = buildEntryFieldValuesSchema(fields);
   const dynamicParsed = dynamicSchema.safeParse(readDynamicRawValues(formData, fields));
   if (!dynamicParsed.success) {
     return { fieldErrors: dynamicParsed.error.flatten().fieldErrors };
   }
 
-  await prisma.$transaction([
-    prisma.kpiEntry.update({
-      where: { id: entryId },
-      data: {
-        entryDate: core.data.entryDate,
-        countsTowardTarget: core.data.countsTowardTarget,
-        evidenceSource: core.data.evidenceSource || null,
-        notes: core.data.notes || null,
-      },
-    }),
-    ...fields.map((field) =>
-      prisma.kpiEntryFieldValue.upsert({
-        where: { entryId_fieldDefinitionId: { entryId, fieldDefinitionId: field.id } },
-        create: {
-          entryId,
-          fieldDefinitionId: field.id,
-          ...writeFieldValue(
-            field.fieldType,
-            dynamicParsed.data[field.fieldKey as keyof typeof dynamicParsed.data] as never,
-          ),
-        },
-        update: writeFieldValue(
-          field.fieldType,
-          dynamicParsed.data[field.fieldKey as keyof typeof dynamicParsed.data] as never,
-        ),
-      }),
-    ),
-  ]);
+  try {
+    await updateEntryRecord(kpiId, entryId, core.data, dynamicParsed.data, fields);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to update case." };
+  }
 
   revalidatePath(`/kpis/${kpiId}`);
   redirect(`/kpis/${kpiId}`);
 }
 
 export async function deleteKpiEntry(kpiId: string, entryId: string) {
-  await prisma.kpiEntry.delete({ where: { id: entryId } });
+  await deleteEntryRecord(kpiId, entryId);
   revalidatePath(`/kpis/${kpiId}`);
 }

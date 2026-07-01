@@ -14,27 +14,44 @@ const optionsTextSchema = z
       .filter(Boolean),
   );
 
-export const fieldDefinitionFormSchema = z
-  .object({
-    label: z.string().trim().min(1, "Label is required"),
-    fieldType: z.enum(FieldType),
-    optionsText: optionsTextSchema,
-    helpText: z.string().trim().optional(),
-    isRequired: z.coerce.boolean().default(false),
-    displayOrder: z.coerce.number().int().default(0),
-  })
-  .superRefine((data, ctx) => {
-    if (SELECT_TYPES.has(data.fieldType) && data.optionsText.length === 0) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["optionsText"],
-        message: "At least one option is required for select fields",
-      });
-    }
+function checkOptions(fieldType: FieldType, options: string[], ctx: z.RefinementCtx) {
+  if (SELECT_TYPES.has(fieldType) && options.length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "At least one option is required for select fields",
+    });
+  }
+}
+
+const fieldDefinitionBaseSchema = z.object({
+  label: z.string().trim().min(1, "Label is required"),
+  fieldType: z.enum(FieldType),
+  helpText: z.string().trim().optional(),
+  isRequired: z.coerce.boolean().default(false),
+  displayOrder: z.coerce.number().int().default(0),
+});
+
+/** Used by the "add field" form — options come in as one textarea, one per line. */
+export const fieldDefinitionFormSchema = fieldDefinitionBaseSchema
+  .extend({ optionsText: optionsTextSchema })
+  .transform((data, ctx) => {
+    checkOptions(data.fieldType, data.optionsText, ctx);
+    return { ...data, options: data.optionsText };
+  });
+
+/** Used by the JSON API — options come in as a plain string array. */
+export const fieldDefinitionApiSchema = fieldDefinitionBaseSchema
+  .extend({ options: z.array(z.string()).default([]) })
+  .transform((data, ctx) => {
+    checkOptions(data.fieldType, data.options, ctx);
+    return data;
   });
 
 export type FieldDefinitionFormInput = z.input<typeof fieldDefinitionFormSchema>;
 export type FieldDefinitionFormValues = z.output<typeof fieldDefinitionFormSchema>;
+export type FieldDefinitionApiInput = z.input<typeof fieldDefinitionApiSchema>;
+export type FieldDefinitionApiValues = z.output<typeof fieldDefinitionApiSchema>;
 
 export function slugifyFieldKey(label: string): string {
   return label

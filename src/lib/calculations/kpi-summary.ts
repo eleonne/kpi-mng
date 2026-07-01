@@ -8,7 +8,9 @@ import { MeasurementType } from "@/generated/prisma/enums";
 import { fieldValueToDisplayString, readFieldValue } from "@/lib/field-values";
 import { calculateCurrentValue, type CalculationResult } from "./current-value";
 
-export type KpiEntryWithValues = KpiEntry & { fieldValues: KpiEntryFieldValue[] };
+export type KpiEntryWithValues = KpiEntry & {
+  fieldValues: (KpiEntryFieldValue & { fieldDefinition: KpiFieldDefinition })[];
+};
 export type KpiWithEntriesAndFields = Kpi & {
   entries: KpiEntryWithValues[];
   fieldDefinitions: KpiFieldDefinition[];
