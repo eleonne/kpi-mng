@@ -1,0 +1,142 @@
+// Template seed file, committed to the repo. prisma/seed.ts (the file actually
+// run by `npm run db:seed`) holds real KPI data and is gitignored — copy this
+// file to prisma/seed.ts and replace the example KPIs below with real ones.
+import "dotenv/config";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaClient } from "../src/generated/prisma/client";
+import { FieldType, KpiStatus, MeasurementType } from "../src/generated/prisma/enums";
+
+const databaseUrl = (process.env.DATABASE_URL ?? "file:./dev.db").replace(/^file:/, "");
+const prisma = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: databaseUrl }) });
+
+interface SeedField {
+  fieldKey: string;
+  label: string;
+  fieldType: FieldType;
+  options?: string[];
+  helpText?: string;
+  isRequired?: boolean;
+}
+
+interface SeedKpi {
+  name: string;
+  theme: string;
+  objective: string;
+  measurementType: MeasurementType;
+  targetValue: number;
+  targetUnit: string;
+  targetPeriodLabel: string;
+  measurementFormulaText: string;
+  qualificationCriteria: string[];
+  populationSize?: number;
+  primaryFieldKey: string;
+  fields: SeedField[];
+}
+
+// Placeholder examples only — one per measurement type, so the shape of each
+// is easy to copy. Replace with your organization's real KPIs.
+const KPIS: SeedKpi[] = [
+  {
+    name: "Widget Assembly Throughput",
+    theme: "Example Theme",
+    objective: "Example COUNT KPI — replace with a real objective.",
+    measurementType: MeasurementType.COUNT,
+    targetValue: 42,
+    targetUnit: "widgets",
+    targetPeriodLabel: "Quarter-end",
+    measurementFormulaText: "Number of widgets fully assembled and QA-approved",
+    qualificationCriteria: ["Passed final QA inspection"],
+    primaryFieldKey: "batch_name",
+    fields: [
+      { fieldKey: "batch_name", label: "Batch Name", fieldType: FieldType.TEXT, isRequired: true },
+      { fieldKey: "assembled_by", label: "Assembled By", fieldType: FieldType.TEXT },
+      { fieldKey: "notes", label: "Notes", fieldType: FieldType.LONG_TEXT },
+    ],
+  },
+  {
+    name: "Customer Onboarding Completion Rate",
+    theme: "Example Theme",
+    objective: "Example PERCENTAGE_OF_ENTRIES KPI — replace with a real objective.",
+    measurementType: MeasurementType.PERCENTAGE_OF_ENTRIES,
+    targetValue: 85,
+    targetUnit: "%",
+    targetPeriodLabel: "Quarter-end",
+    measurementFormulaText: "(Customers who completed onboarding ÷ Customers who started onboarding) × 100",
+    qualificationCriteria: ["Completed all required onboarding steps"],
+    primaryFieldKey: "customer_name",
+    fields: [
+      { fieldKey: "customer_name", label: "Customer Name", fieldType: FieldType.TEXT, isRequired: true },
+      {
+        fieldKey: "onboarding_status",
+        label: "Onboarding Status",
+        fieldType: FieldType.SELECT,
+        options: ["Completed", "In Progress", "Abandoned"],
+      },
+    ],
+  },
+  {
+    name: "Regional Offices Using New Portal",
+    theme: "Example Theme",
+    objective: "Example PERCENTAGE_OF_FIXED_POPULATION KPI — replace with a real objective.",
+    measurementType: MeasurementType.PERCENTAGE_OF_FIXED_POPULATION,
+    targetValue: 100,
+    targetUnit: "%",
+    targetPeriodLabel: "Year-end",
+    measurementFormulaText: "(Regional offices actively using the new portal ÷ Total regional offices) × 100",
+    qualificationCriteria: ["Logged into the new portal at least once"],
+    populationSize: 8,
+    primaryFieldKey: "office_name",
+    fields: [
+      { fieldKey: "office_name", label: "Office Name", fieldType: FieldType.TEXT, isRequired: true },
+      { fieldKey: "first_login_date", label: "First Login Date", fieldType: FieldType.DATE },
+    ],
+  },
+];
+
+async function main() {
+  for (const kpi of KPIS) {
+    const existing = await prisma.kpi.findUnique({ where: { name: kpi.name } });
+    if (existing) {
+      console.log(`Skipping "${kpi.name}" — already seeded.`);
+      continue;
+    }
+
+    await prisma.kpi.create({
+      data: {
+        name: kpi.name,
+        theme: kpi.theme,
+        objective: kpi.objective,
+        status: KpiStatus.ACTIVE,
+        measurementType: kpi.measurementType,
+        targetValue: kpi.targetValue,
+        targetUnit: kpi.targetUnit,
+        targetPeriodLabel: kpi.targetPeriodLabel,
+        measurementFormulaText: kpi.measurementFormulaText,
+        qualificationCriteria: JSON.stringify(kpi.qualificationCriteria),
+        populationSize: kpi.populationSize ?? null,
+        primaryFieldKey: kpi.primaryFieldKey,
+        fieldDefinitions: {
+          create: kpi.fields.map((field, index) => ({
+            fieldKey: field.fieldKey,
+            label: field.label,
+            fieldType: field.fieldType,
+            options: field.options ? JSON.stringify(field.options) : null,
+            helpText: field.helpText ?? null,
+            isRequired: field.isRequired ?? false,
+            displayOrder: index,
+          })),
+        },
+      },
+    });
+    console.log(`Seeded "${kpi.name}".`);
+  }
+}
+
+main()
+  .catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

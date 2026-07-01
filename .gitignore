@@ -1,0 +1,58 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files — .env.default is the committed template, .env is the real local file
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
+
+# prisma sqlite dev database (resolved relative to prisma.config.ts, i.e. repo root)
+# dev.db.default is the committed empty-schema template, dev.db is the real local file
+/dev.db
+/dev.db-journal
+
+# prisma/.seed.ts.default is the committed template, prisma/seed.ts holds real seed data
+/prisma/seed.ts
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
+/kpis.docx

@@ -1,0 +1,125 @@
+// Prisma schema — mirrors the entities defined in docs/data-model.md.
+// Keep that doc and docs/business-rules.md in sync with any change made here.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum KpiStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum MeasurementType {
+  COUNT
+  PERCENTAGE_OF_ENTRIES
+  PERCENTAGE_OF_FIXED_POPULATION
+}
+
+enum FieldType {
+  TEXT
+  LONG_TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+}
+
+model Kpi {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  theme     String?
+  objective String
+  owner     String?
+  status    KpiStatus @default(DRAFT)
+
+  measurementType        MeasurementType
+  targetValue            Float
+  targetUnit             String?
+  targetPeriodLabel      String?
+  measurementFormulaText String?
+  /// JSON-encoded string[] — the "counts if..." checklist shown as a reminder when logging a case
+  qualificationCriteria  String?
+
+  /// Required and > 0 only when measurementType = PERCENTAGE_OF_FIXED_POPULATION
+  populationSize Int?
+
+  /// Matches a fieldKey on one of this KPI's fieldDefinitions. Plain string (not a relation)
+  /// on purpose: a Kpi <-> KpiFieldDefinition FK pointer here would create a cascade cycle with
+  /// KpiFieldDefinition.kpiId when a Kpi is deleted. App layer resolves and validates it.
+  primaryFieldKey String?
+
+  fieldDefinitions KpiFieldDefinition[]
+  entries          KpiEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+}
+
+model KpiFieldDefinition {
+  id    String @id @default(cuid())
+  kpiId String
+  kpi   Kpi    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  fieldKey  String
+  label     String
+  fieldType FieldType
+  /// JSON-encoded string[], only for SELECT / MULTI_SELECT
+  options   String?
+  helpText  String?
+
+  isRequired   Boolean @default(false)
+  displayOrder Int     @default(0)
+  /// Soft-delete: hidden from new-case forms, preserved on historical entries
+  isActive     Boolean @default(true)
+
+  values KpiEntryFieldValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kpiId, fieldKey])
+}
+
+model KpiEntry {
+  id    String @id @default(cuid())
+  kpiId String
+  kpi   Kpi    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  entryDate          DateTime
+  countsTowardTarget Boolean  @default(true)
+  evidenceSource     String?
+  notes              String?
+
+  fieldValues KpiEntryFieldValue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+}
+
+model KpiEntryFieldValue {
+  id                String             @id @default(cuid())
+  entryId           String
+  entry             KpiEntry           @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  fieldDefinitionId String
+  fieldDefinition   KpiFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  /// Exactly one of these is populated, matching fieldDefinition.fieldType
+  valueText    String?
+  valueNumber  Float?
+  valueDate    DateTime?
+  valueBoolean Boolean?
+  /// JSON-encoded string[], only for MULTI_SELECT
+  valueJson    String?
+
+  @@unique([entryId, fieldDefinitionId])
+}
