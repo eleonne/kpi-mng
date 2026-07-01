@@ -37,7 +37,9 @@ function checkMeasurementTypeConstraints(
   }
 }
 
-const kpiBaseObjectSchema = z.object({
+/** Exported so other JSON-input entry points (e.g. the MCP server) can reuse
+ * the same field shapes as tool-input hints without redeclaring them. */
+export const kpiBaseObjectSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   theme: z.string().trim().optional(),
   objective: z.string().trim().min(1, "Objective is required"),

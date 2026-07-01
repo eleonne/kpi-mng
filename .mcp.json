@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "kpi-dashboard": {
+      "command": "npx",
+      "args": ["tsx", "mcp/server.ts"]
+    }
+  }
+}

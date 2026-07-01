@@ -5,7 +5,8 @@ against them. It's a thin layer over the same service functions the web UI's
 Server Actions call (`src/lib/services/*`), so business rules — uniqueness,
 activation preconditions, delete guards — are identical between the UI and
 the API. See [data-model.md](data-model.md) and [business-rules.md](business-rules.md)
-for the underlying entities and rules; this doc covers the HTTP contract.
+for the underlying entities and rules; this doc covers the HTTP contract. There's also an
+[MCP server](mcp.md) exposing the same operations as tools for LLM clients.
 
 **No authentication yet.** This is an open question carried over from
 `docs/business-rules.md` §6 — every endpoint below is currently open to

@@ -24,7 +24,9 @@ function checkOptions(fieldType: FieldType, options: string[], ctx: z.Refinement
   }
 }
 
-const fieldDefinitionBaseSchema = z.object({
+/** Exported so other JSON-input entry points (e.g. the MCP server) can reuse
+ * the same field shapes as tool-input hints without redeclaring them. */
+export const fieldDefinitionBaseSchema = z.object({
   label: z.string().trim().min(1, "Label is required"),
   fieldType: z.enum(FieldType),
   helpText: z.string().trim().optional(),
