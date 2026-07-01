@@ -72,7 +72,7 @@ if [ ! -f "$PROJECT_ROOT/.env" ]; then
 fi
 
 echo "==> Installing dependencies (npm ci)"
-run_as_service_user "npm ci"
+runuser "npm ci"
 
 echo "==> Applying database migrations"
 run_as_service_user "npm run db:migrate:deploy"
