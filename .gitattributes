@@ -1,0 +1,5 @@
+# Force LF line endings for shell scripts regardless of a contributor's local
+# core.autocrlf setting — a CRLF-corrupted shebang line breaks execution on
+# the Linux hosts these scripts actually run on (see deploy/install.sh,
+# deploy/uninstall.sh).
+*.sh text eol=lf
