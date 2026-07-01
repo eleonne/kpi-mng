@@ -61,26 +61,33 @@ fi
 echo "==> Setting ownership of $PROJECT_ROOT to $SERVICE_USER"
 chown -R "$SERVICE_USER":"$SERVICE_USER" "$PROJECT_ROOT"
 
+# Runs its arguments as $SERVICE_USER, cwd $PROJECT_ROOT. Deliberately passes
+# each argument to `runuser` as a separate, plain argv word (e.g. "npm" "ci")
+# rather than building one shell string like `bash -c "cd ... && npm ci"` —
+# some runuser builds mangle a single quoted/&&-containing argument passed
+# after `--`. `cd` happens in this parent subshell instead; the child process
+# runuser execs inherits that working directory (true for the non-login
+# `-u user -- command` form used here — a login `su - user` would reset it).
 run_as_service_user() {
-  runuser -u "$SERVICE_USER" -- bash -c "cd '$PROJECT_ROOT' && $*"
+  ( cd "$PROJECT_ROOT" && runuser -u "$SERVICE_USER" -- "$@" )
 }
 
 echo "==> Configuring environment"
 if [ ! -f "$PROJECT_ROOT/.env" ]; then
-  run_as_service_user "cp .env.default .env"
+  run_as_service_user cp .env.default .env
   echo "Created .env from .env.default — edit $PROJECT_ROOT/.env if you need a non-default DATABASE_URL."
 fi
 
 echo "==> Installing dependencies (npm ci)"
-runuser "npm ci"
+run_as_service_user npm ci
 
 echo "==> Applying database migrations"
-run_as_service_user "npm run db:migrate:deploy"
+run_as_service_user npm run db:migrate:deploy
 echo "Note: this does not seed data. Optional: copy prisma/.seed.ts.default to"
 echo "prisma/seed.ts (customize it first) and run 'npm run db:seed' yourself."
 
 echo "==> Building the app"
-run_as_service_user "npm run build"
+run_as_service_user npm run build
 
 echo "==> Writing systemd unit (port $PORT, running as $SERVICE_USER via CAP_NET_BIND_SERVICE)"
 cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
