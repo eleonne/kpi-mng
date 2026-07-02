@@ -18,6 +18,15 @@ export const metadata: Metadata = {
   description: "Define KPIs, log cases, track progress toward targets.",
 };
 
+// None of these pages use a dynamic API (cookies/headers/searchParams), so
+// Next would otherwise statically render them at build time and only refresh
+// that cache on the next `next build` — stale for any write that doesn't go
+// through a Server Action's revalidatePath (e.g. MCP tools, which write to
+// the database directly). Forcing dynamic rendering on every route makes
+// every page read live from the database on each request, matching
+// docs/business-rules.md §4 ("the dashboard always reflects live data").
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -124,6 +124,13 @@ kpi-mng/
 - Prisma model names: singular PascalCase (`Kpi`, `KpiFieldDefinition`, `KpiEntry`,
   `KpiEntryFieldValue`), fields camelCase — standard Prisma convention, mapping 1:1 onto the
   entities named in `docs/data-model.md`.
+- **All pages render dynamically** (`export const dynamic = "force-dynamic"` in the root
+  layout, which cascades to every route). None of the pages use a dynamic API
+  (cookies/headers/searchParams), so without this Next.js would statically render them at
+  build time and only refresh that cache on the next `next build` — stale for any write that
+  doesn't go through a Server Action's `revalidatePath` (the REST API and both MCP transports
+  write straight to the database). Matches the "dashboard always reflects live data" invariant
+  in `docs/business-rules.md` §4.
 
 ## Conventions
 
