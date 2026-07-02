@@ -45,7 +45,9 @@ next-env.d.ts
 # prisma sqlite dev database (resolved relative to prisma.config.ts, i.e. repo root)
 # dev.db.default is the committed empty-schema template, dev.db is the real local file
 /dev.db
+/prod.db
 /dev.db-journal
+/prod.db-journal
 
 # prisma/.seed.ts.default is the committed template, prisma/seed.ts holds real seed data
 /prisma/seed.ts

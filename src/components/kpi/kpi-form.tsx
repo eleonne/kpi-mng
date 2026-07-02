@@ -130,7 +130,7 @@ export function KpiForm({ action, defaultValues, primaryFieldOptions, submitLabe
             label="Primary field"
             name="primaryFieldKey"
             error={errors.primaryFieldKey}
-            hint="Text/Select field used to count distinct qualifying cases"
+            hint="Field shown as each case's label in the case list"
           >
             <Select name="primaryFieldKey" defaultValue={defaultValues?.primaryFieldKey ?? "__none__"}>
               <SelectTrigger id="primaryFieldKey" className="w-full">

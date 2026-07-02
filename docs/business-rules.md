@@ -15,9 +15,8 @@ lifecycle, calculation edge cases — plus open questions to resolve before impl
   legitimately revised, e.g. mid-year).
 - `population_size` is required and must be `> 0` when `measurement_type =
   PERCENTAGE_OF_FIXED_POPULATION`; it must be left unset otherwise.
-- `primary_field_id` is required when `measurement_type = PERCENTAGE_OF_FIXED_POPULATION`, and
-  must reference a field of type `TEXT` or `SELECT` (distinct-value counting doesn't make
-  sense on numbers, dates, or booleans).
+- `primary_field_id` is always optional — it only controls which field is shown as a case's
+  label in the case list, and has no effect on any calculation.
 - **Delete vs. archive**: a KPI can only be **hard-deleted** if it has zero cases. A KPI with
   one or more cases must be **archived** instead, to preserve the audit trail. Archived KPIs
   are hidden from the dashboard and from "log a new case" pickers but remain viewable in a

@@ -37,7 +37,7 @@ The definition of a single KPI (create/edit/delete/archive from the UI).
 | `measurement_formula_text` | text | no | Human-readable formula, copied from source doc, shown as help text |
 | `qualification_criteria` | list of strings | no | The "✅ counts if..." checklist from the source doc; shown as a reminder when logging a case |
 | `population_size` | integer | conditional | Required, must be > 0, only when `measurement_type = PERCENTAGE_OF_FIXED_POPULATION` (e.g. "Total ITS Teams = 6") |
-| `primary_field_id` | FK → KpiFieldDefinition | conditional | The field used as a case's display label everywhere, and as the distinct-value key for `PERCENTAGE_OF_FIXED_POPULATION` |
+| `primary_field_id` | FK → KpiFieldDefinition | no | The field used as a case's display label in the case list |
 | `created_at`, `updated_at`, `created_by` | metadata | yes | Audit trail |
 
 ### 2. KpiFieldDefinition
@@ -109,10 +109,11 @@ Recomputed on demand (on every case create/update/delete), never cached:
 - **`PERCENTAGE_OF_ENTRIES`** — `current = COUNT(qualifying entries) / COUNT(all entries) × 100`
   Used when every logged case represents one unit of the population being measured (e.g. every
   ARB-relevant project gets a case; qualifying ones are those actually reviewed).
-- **`PERCENTAGE_OF_FIXED_POPULATION`** — `current = COUNT(DISTINCT value of primary_field WHERE counts_toward_target = true) / population_size × 100`
+- **`PERCENTAGE_OF_FIXED_POPULATION`** — `current = COUNT(entries WHERE counts_toward_target = true) / population_size × 100`
   Used when the population is an external constant larger than/independent of the number of
-  cases logged (e.g. "ITS Teams Engaged" — total ITS teams is a fixed org fact; a team can have
-  several engagement cases but should only count once).
+  cases logged (e.g. "ITS Teams Engaged" — total ITS teams is a fixed org fact, tracked
+  separately from `population_size`). Whether a case counts is entirely up to
+  `counts_toward_target`, same as the other measurement types.
 
 If the denominator is `0` (no entries yet, or `population_size` unset), display **"No data
 yet"** rather than `0%` or an error.

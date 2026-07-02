@@ -8,12 +8,6 @@ import { MeasurementType } from "@/generated/prisma/enums";
  */
 export interface CalculationEntry {
   countsTowardTarget: boolean;
-  /**
-   * The KPI's primary-field value for this entry, as a display string.
-   * Only required for PERCENTAGE_OF_FIXED_POPULATION (distinct-value counting);
-   * ignored otherwise.
-   */
-  primaryFieldValue?: string | null;
 }
 
 export interface CalculationInput {
@@ -83,13 +77,7 @@ function calculatePercentageOfEntries(input: CalculationInput): CalculationResul
 
 function calculatePercentageOfFixedPopulation(input: CalculationInput): CalculationResult {
   const denominator = input.populationSize ?? 0;
-  const distinctValues = new Set(
-    input.entries
-      .filter((e) => e.countsTowardTarget)
-      .map((e) => e.primaryFieldValue)
-      .filter((value): value is string => Boolean(value)),
-  );
-  const numerator = distinctValues.size;
+  const numerator = input.entries.filter((e) => e.countsTowardTarget).length;
   const hasData = denominator > 0;
   const currentValue = hasData ? (numerator / denominator) * 100 : null;
 

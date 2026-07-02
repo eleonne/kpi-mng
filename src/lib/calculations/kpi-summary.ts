@@ -5,7 +5,6 @@ import type {
   KpiFieldDefinition,
 } from "@/generated/prisma/client";
 import { MeasurementType } from "@/generated/prisma/enums";
-import { fieldValueToDisplayString, readFieldValue } from "@/lib/field-values";
 import { calculateCurrentValue, type CalculationResult } from "./current-value";
 
 export type KpiEntryWithValues = KpiEntry & {
@@ -23,20 +22,8 @@ export interface KpiSummary extends CalculationResult {
 }
 
 export function summarizeKpi(kpi: KpiWithEntriesAndFields): KpiSummary {
-  const primaryField = kpi.primaryFieldKey
-    ? kpi.fieldDefinitions.find((f) => f.fieldKey === kpi.primaryFieldKey)
-    : undefined;
-
   const entries = kpi.entries.map((entry) => ({
     countsTowardTarget: entry.countsTowardTarget,
-    primaryFieldValue: primaryField
-      ? fieldValueToDisplayString(
-          readFieldValue(
-            primaryField.fieldType,
-            entry.fieldValues.find((v) => v.fieldDefinitionId === primaryField.id) ?? null,
-          ),
-        )
-      : null,
   }));
 
   const result = calculateCurrentValue({

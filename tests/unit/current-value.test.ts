@@ -77,23 +77,23 @@ describe("calculateCurrentValue — PERCENTAGE_OF_ENTRIES", () => {
 });
 
 describe("calculateCurrentValue — PERCENTAGE_OF_FIXED_POPULATION", () => {
-  it("counts distinct qualifying primary-field values against the fixed population", () => {
+  it("counts qualifying entries directly against the fixed population", () => {
     const result = calculateCurrentValue({
       measurementType: MeasurementType.PERCENTAGE_OF_FIXED_POPULATION,
       targetValue: 100,
       populationSize: 6,
       entries: [
-        { countsTowardTarget: true, primaryFieldValue: "Team A" },
-        { countsTowardTarget: true, primaryFieldValue: "Team A" }, // same team, two engagements
-        { countsTowardTarget: true, primaryFieldValue: "Team B" },
-        { countsTowardTarget: false, primaryFieldValue: "Team C" },
+        { countsTowardTarget: true },
+        { countsTowardTarget: true },
+        { countsTowardTarget: true },
+        { countsTowardTarget: false },
       ],
     });
 
     expect(result.hasData).toBe(true);
-    expect(result.numerator).toBe(2); // Team A + Team B, distinct
+    expect(result.numerator).toBe(3);
     expect(result.denominator).toBe(6);
-    expect(result.currentValue).toBeCloseTo((2 / 6) * 100);
+    expect(result.currentValue).toBeCloseTo((3 / 6) * 100);
   });
 
   it("shows 'no data' when population size is unset or zero", () => {
@@ -101,7 +101,7 @@ describe("calculateCurrentValue — PERCENTAGE_OF_FIXED_POPULATION", () => {
       measurementType: MeasurementType.PERCENTAGE_OF_FIXED_POPULATION,
       targetValue: 100,
       populationSize: null,
-      entries: [{ countsTowardTarget: true, primaryFieldValue: "Team A" }],
+      entries: [{ countsTowardTarget: true }],
     });
 
     expect(result.hasData).toBe(false);

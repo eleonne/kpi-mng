@@ -1,5 +1,5 @@
 import type { Kpi, KpiFieldDefinition } from "@/generated/prisma/client";
-import { FieldType, MeasurementType } from "@/generated/prisma/enums";
+import { MeasurementType } from "@/generated/prisma/enums";
 
 /**
  * Business rules from docs/business-rules.md §1/§2, expressed as eligibility
@@ -8,7 +8,7 @@ import { FieldType, MeasurementType } from "@/generated/prisma/enums";
  */
 
 export function getActivationBlockers(
-  kpi: Pick<Kpi, "measurementType" | "populationSize" | "primaryFieldKey">,
+  kpi: Pick<Kpi, "measurementType" | "populationSize">,
   activeFieldDefinitions: KpiFieldDefinition[],
 ): string[] {
   const blockers: string[] = [];
@@ -20,13 +20,6 @@ export function getActivationBlockers(
   if (kpi.measurementType === MeasurementType.PERCENTAGE_OF_FIXED_POPULATION) {
     if (!kpi.populationSize || kpi.populationSize <= 0) {
       blockers.push("Set a population size (this measurement type requires one).");
-    }
-
-    const primaryField = activeFieldDefinitions.find((f) => f.fieldKey === kpi.primaryFieldKey);
-    if (!primaryField) {
-      blockers.push("Choose a primary field (this measurement type requires one).");
-    } else if (primaryField.fieldType !== FieldType.TEXT && primaryField.fieldType !== FieldType.SELECT) {
-      blockers.push("The primary field must be a Text or Select field.");
     }
   }
 
